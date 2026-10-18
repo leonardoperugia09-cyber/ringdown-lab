@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ringdown-lab"
+version = "0.1.0"
+description = "When does ignoring the overtone bias a black-hole ringdown measurement more than noise does?"
+authors = [{ name = "Leonardo Perugia" }]
+license = { text = "MIT" }
+requires-python = ">=3.10"
+dependencies = ["numpy", "scipy", "matplotlib"]
+
+[tool.setuptools]
+packages = ["ringdown_lab"]
