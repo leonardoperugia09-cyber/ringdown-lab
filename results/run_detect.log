@@ -1,0 +1,33 @@
+Experiment C (N = 200)
+  C  start 0 ms SNR   8: detected   1.0%  (false alarm  1.0%)  Fisher Z   0.29  rho_res   0.54
+  C  start 0 ms SNR  10: detected   0.5%  (false alarm  0.0%)  Fisher Z   0.37  rho_res   0.67
+  C  start 0 ms SNR  15: detected   3.5%  (false alarm  2.0%)  Fisher Z   0.55  rho_res   1.00
+  C  start 0 ms SNR  20: detected   5.0%  (false alarm  1.5%)  Fisher Z   0.73  rho_res   1.34
+  C  start 0 ms SNR  30: detected   9.0%  (false alarm  0.5%)  Fisher Z   1.10  rho_res   2.01
+  C  start 0 ms SNR  50: detected  54.5%  (false alarm  1.0%)  Fisher Z   1.83  rho_res   3.35
+  C  start 0 ms SNR  80: detected  97.0%  (false alarm  1.0%)  Fisher Z   2.93  rho_res   5.36
+  C  start 0 ms SNR 120: detected 100.0%  (false alarm  0.5%)  Fisher Z   4.39  rho_res   8.04
+  C  start 0 ms SNR 200: detected 100.0%  (false alarm  1.5%)  Fisher Z   7.32  rho_res  13.40
+  C  start 0 ms SNR 300: detected 100.0%  (false alarm  1.0%)  Fisher Z  10.98  rho_res  20.10
+  C  start 2 ms SNR   8: detected   0.0%  (false alarm  1.0%)  Fisher Z   0.05  rho_res   0.11
+  C  start 2 ms SNR  10: detected   2.0%  (false alarm  2.0%)  Fisher Z   0.06  rho_res   0.13
+  C  start 2 ms SNR  15: detected   1.5%  (false alarm  0.5%)  Fisher Z   0.10  rho_res   0.20
+  C  start 2 ms SNR  20: detected   1.0%  (false alarm  0.5%)  Fisher Z   0.13  rho_res   0.27
+  C  start 2 ms SNR  30: detected   0.5%  (false alarm  1.0%)  Fisher Z   0.19  rho_res   0.40
+  C  start 2 ms SNR  50: detected   2.0%  (false alarm  0.5%)  Fisher Z   0.32  rho_res   0.67
+  C  start 2 ms SNR  80: detected   2.0%  (false alarm  1.0%)  Fisher Z   0.52  rho_res   1.08
+  C  start 2 ms SNR 120: detected   4.0%  (false alarm  0.5%)  Fisher Z   0.78  rho_res   1.62
+  C  start 2 ms SNR 200: detected  21.5%  (false alarm  2.0%)  Fisher Z   1.29  rho_res   2.70
+  C  start 2 ms SNR 300: detected  68.5%  (false alarm  1.0%)  Fisher Z   1.94  rho_res   4.05
+  C  dchi2 threshold for 1% false alarms: 15.70
+Experiment D
+  D  default, start 0 ms: bias wins above SNR      3.8 (Fisher k 4.966 ms), heard (Z=3) above SNR      82.0
+  D  default, start 1 ms: bias wins above SNR     15.3 (Fisher k 11.412 ms), heard (Z=3) above SNR     227.5
+  D  default, start 2 ms: bias wins above SNR     36.1 (Fisher k 18.013 ms), heard (Z=3) above SNR     464.3
+  D  default, start 3 ms: bias wins above SNR     76.6 (Fisher k 24.385 ms), heard (Z=3) above SNR    1107.8
+  D  default, start 4 ms: bias wins above SNR    209.0 (Fisher k 37.484 ms), heard (Z=3) above SNR    2239.4
+  D  default, start 6 ms: bias wins above SNR   1135.8 (Fisher k 68.395 ms), heard (Z=3) above SNR   10827.0
+  D  default, start 8 ms: bias wins above SNR   5967.4 (Fisher k 118.332 ms), heard (Z=3) above SNR   52485.9
+  D  grid start 0 ms: crossover SNR 0.9-18392.4, heard SNR 15.8-240.4
+  D  grid start 2 ms: crossover SNR 13.8-3092.5, heard SNR 93.1-1366.7
+Saved results\detection.json and figures 5-7 in 350 s

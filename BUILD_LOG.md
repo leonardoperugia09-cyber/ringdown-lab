@@ -22,6 +22,18 @@
 
 ## Step 10 – README
 
+## Step 11 – Research: when can an overtone be detected?
+
+## Step 12 – Detection measures (detect.py)
+
+## Step 13 – Experiment C: Δχ² detection test
+
+## Step 14 – Experiment D: blind spot, amplitude and phase
+
+## Step 15 – Overtone Explorer app
+
+## Step 16 – Checking the app against Python
+
 ## Problems I hit and how I fixed them
 
 ## What I learned

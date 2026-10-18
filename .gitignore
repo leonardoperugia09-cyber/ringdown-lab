@@ -12,3 +12,6 @@ __pycache__/
 .DS_Store
 Thumbs.db
 .vscode/
+
+# Deep-research working notes (the final report is in docs/)
+research_notes/

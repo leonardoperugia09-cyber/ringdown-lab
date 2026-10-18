@@ -1,0 +1,800 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Overtone Explorer</title>
+<meta name="description" content="Change a ringing black hole and the noise, and see whether you can hear the 221 overtone, and why.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+/* Layout: an instrument panel. Controls rail on the left (stacks on phones),
+   readout column on the right: verdict, reasons, scope traces, numbers. */
+:root {
+  --bg: #f4f6f9;
+  --surface: #ffffff;
+  --ink: #101820;
+  --ink-2: #485462;
+  --muted: #7f8a98;
+  --line: #dfe4ea;
+  --grid: #edf0f4;
+  --c220: #2a78d6;
+  --c221: #eb6834;
+  --data: #a9b3bf;
+  --good: #0ca30c;
+  --warn: #c98500;
+  --bad: #d03b3b;
+  --focus: #2a78d6;
+  --shade: rgba(16, 24, 32, 0.05);
+  --font-display: "Archivo", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1116; --surface: #151b22; --ink: #e9eef4; --ink-2: #a9b4c1; --muted: #6d7886;
+    --line: #27303a; --grid: #1d242c; --c220: #3987e5; --c221: #d95926; --data: #4b5663;
+    --good: #2fb52f; --warn: #e0a320; --bad: #e66767; --focus: #3987e5; --shade: rgba(233, 238, 244, 0.05);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1116; --surface: #151b22; --ink: #e9eef4; --ink-2: #a9b4c1; --muted: #6d7886;
+  --line: #27303a; --grid: #1d242c; --c220: #3987e5; --c221: #d95926; --data: #4b5663;
+  --good: #2fb52f; --warn: #e0a320; --bad: #e66767; --focus: #3987e5; --shade: rgba(233, 238, 244, 0.05);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font: 15px/1.55 var(--font-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 48px;
+}
+.wrap { max-width: 1240px; margin: 0 auto; display: grid; gap: 20px; }
+h1, h2, h3 { font-family: var(--font-display); font-stretch: 85%; text-wrap: balance; margin: 0; line-height: 1.15; }
+h1 { font-size: clamp(28px, 4vw, 40px); font-weight: 800; letter-spacing: -0.01em; }
+h2 { font-size: 19px; font-weight: 700; }
+h3 { font-size: 15px; font-weight: 700; }
+p { margin: 0; }
+a { color: var(--c220); }
+.mono, .num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.eyebrow { font: 600 11px/1.2 var(--font-body); letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }
+.lede { color: var(--ink-2); max-width: 70ch; }
+
+header.top { display: grid; gap: 8px; }
+header.top .modes { display: flex; flex-wrap: wrap; gap: 14px; color: var(--ink-2); font-size: 13px; }
+.swatch { display: inline-block; width: 18px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+
+.layout { display: grid; grid-template-columns: minmax(270px, 320px) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 860px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px; display: grid; gap: 14px; min-width: 0; }
+.rail { position: sticky; top: calc(12px + env(safe-area-inset-top, 0px)); }
+@media (max-width: 860px) { .rail { position: static; } }
+
+.presets { display: flex; flex-wrap: wrap; gap: 6px; }
+button {
+  font: 500 13px/1 var(--font-body); color: var(--ink); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; cursor: pointer;
+}
+button:hover { border-color: var(--ink-2); }
+button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+button.primary { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+button[disabled] { opacity: 0.5; cursor: default; }
+
+.ctl { display: grid; gap: 4px; }
+.ctl .row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.ctl label { font-weight: 600; font-size: 13px; }
+.ctl output { font-family: var(--font-mono); font-size: 13px; color: var(--ink); }
+.ctl .hint { font-size: 12px; color: var(--muted); }
+input[type=range] { width: 100%; accent-color: var(--c220); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.seg button { border: 0; border-radius: 0; padding: 6px 9px; font-size: 12px; background: transparent; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+
+.readout { display: grid; gap: 20px; min-width: 0; }
+
+.verdict { display: grid; gap: 12px; }
+.verdict .head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 8px; border-radius: 999px; font-weight: 600; border: 1.5px solid currentColor; }
+.pill svg { width: 18px; height: 18px; }
+.pill span { color: var(--ink); }
+.pill.yes { color: var(--good); }
+.pill.hint { color: var(--warn); }
+.pill.no { color: var(--bad); }
+.pill.none { color: var(--muted); }
+.verdict .headline { font-family: var(--font-display); font-stretch: 85%; font-size: clamp(22px, 2.6vw, 30px); font-weight: 750; line-height: 1.15; text-wrap: balance; }
+.gauge { display: grid; gap: 6px; }
+.gauge .bar { position: relative; height: 12px; background: var(--grid); border-radius: 6px; overflow: hidden; }
+.gauge .fill { position: absolute; inset: 0 auto 0 0; background: var(--c221); border-radius: 6px; transition: width 0.15s; }
+.gauge .tick { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--ink); }
+.gauge .scale { position: relative; height: 16px; font: 11px var(--font-mono); color: var(--muted); }
+.gauge .scale span { position: absolute; transform: translateX(-50%); }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag { font-size: 12px; padding: 3px 8px; border-radius: 4px; background: var(--bg); border: 1px solid var(--line); color: var(--ink-2); }
+.tag.alert { border-color: var(--warn); color: var(--ink); }
+
+.reasons { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; counter-reset: r; }
+.reasons li { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 8px; align-items: start; }
+.reasons li::before { counter-increment: r; content: counter(r); font: 600 12px/22px var(--font-mono); text-align: center; width: 22px; height: 22px; border-radius: 50%; background: var(--bg); border: 1px solid var(--line); color: var(--ink-2); }
+.reasons b { font-weight: 600; }
+
+.charts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+@media (max-width: 1100px) { .charts { grid-template-columns: minmax(0, 1fr); } }
+.chart { display: grid; gap: 8px; min-width: 0; }
+.chart.wide { grid-column: 1 / -1; }
+.chart .legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--ink-2); }
+.canvas-box { position: relative; width: 100%; height: 260px; }
+.canvas-box.tall { height: 300px; }
+.canvas-box canvas { width: 100%; height: 100%; display: block; touch-action: pan-y; }
+.tip { position: absolute; pointer-events: none; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; font: 12px/1.45 var(--font-mono); color: var(--ink); white-space: nowrap; box-shadow: 0 4px 14px rgba(0,0,0,0.12); }
+.caption { font-size: 12.5px; color: var(--muted); }
+
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 600; color: var(--ink-2); font-size: 12px; }
+td.num, th.num { text-align: right; }
+
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+@media (max-width: 1100px) { .grid2 { grid-template-columns: minmax(0, 1fr); } }
+
+.exp-out { display: grid; gap: 6px; font-size: 14px; }
+.exp-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.meter { height: 8px; background: var(--grid); border-radius: 4px; overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--c221); width: 0; }
+
+@media (prefers-reduced-motion: reduce) { .gauge .fill { transition: none; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <span class="eyebrow">Ringdown Lab · interactive</span>
+    <h1>Can you hear the overtone?</h1>
+    <p class="lede">Move the sliders to change the black hole, the noise and the fit. The verdict, the reasons and the charts update from the physics.</p>
+    <div class="modes">
+      <span><i class="swatch" style="background:var(--c220)"></i>fundamental 220</span>
+      <span><i class="swatch" style="background:var(--c221)"></i>overtone 221</span>
+      <span><i class="swatch" style="background:var(--data)"></i>noisy data</span>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="panel rail" aria-label="Controls">
+      <div class="ctl">
+        <span class="eyebrow">Scenarios</span>
+        <div class="presets" id="presets">
+          <button type="button" data-preset="project">Project default</button>
+          <button type="button" data-preset="gw250114">GW250114-like</button>
+          <button type="button" data-preset="gw150914">GW150914-like</button>
+          <button type="button" data-preset="late">Late start, loud</button>
+        </div>
+        <p class="hint" id="preset-note"></p>
+      </div>
+
+      <div class="ctl">
+        <div class="row"><label for="mass">Remnant mass</label><output id="mass-out"></output></div>
+        <input type="range" id="mass" min="40" max="120" step="0.1">
+        <span class="hint">Mass as the detector sees it (redshifted). Heavier rings lower and longer.</span>
+      </div>
+      <div class="ctl">
+        <div class="row"><label for="spin">Spin χ</label><output id="spin-out"></output></div>
+        <input type="range" id="spin" min="0" max="0.95" step="0.01">
+      </div>
+      <div class="ctl">
+        <div class="row"><label for="ratio">Overtone amplitude at peak</label><output id="ratio-out"></output></div>
+        <input type="range" id="ratio" min="0.05" max="8" step="0.05">
+        <span class="hint">A₂₂₁ / A₂₂₀ at the peak. Simulations of equal-mass mergers give about 4.</span>
+      </div>
+      <div class="ctl">
+        <div class="row"><label for="phase">Overtone phase at peak</label><output id="phase-out"></output></div>
+        <input type="range" id="phase" min="0" max="359" step="1">
+        <span class="hint">0° starts in step with the fundamental, 180° against it.</span>
+      </div>
+      <div class="ctl">
+        <div class="row"><label for="snr">Loudness (SNR)</label><output id="snr-out"></output></div>
+        <input type="range" id="snr" min="0" max="1000" step="1">
+        <div class="row">
+          <span class="hint">SNR counted</span>
+          <span class="seg" role="group" aria-label="Where SNR is counted from">
+            <button type="button" id="snr-peak" aria-pressed="true">from peak</button>
+            <button type="button" id="snr-start" aria-pressed="false">from fit start</button>
+          </span>
+        </div>
+      </div>
+      <div class="ctl">
+        <div class="row"><label for="t0">Fit starts after peak</label><output id="t0-out"></output></div>
+        <input type="range" id="t0" min="0" max="8" step="0.05">
+        <span class="hint" id="t0-hint"></span>
+      </div>
+      <div class="ctl">
+        <div class="row"><span class="eyebrow">Noise</span><button type="button" id="reroll">New noise</button></div>
+        <span class="hint">White Gaussian noise, σ = 1. The verdict never depends on one noise draw; the experiment below does.</span>
+      </div>
+    </aside>
+
+    <main class="readout">
+      <section class="panel verdict" aria-live="polite">
+        <span class="eyebrow">Verdict</span>
+        <div class="head"><span class="pill" id="pill"></span></div>
+        <p class="headline" id="headline"></p>
+        <div class="gauge" aria-hidden="true">
+          <div class="bar"><div class="fill" id="gauge-fill"></div><div class="tick" style="left:calc(100% * 2 / 6)"></div><div class="tick" style="left:calc(100% * 3 / 6)"></div></div>
+          <div class="scale"><span style="left:0%;transform:none">0σ</span><span style="left:33.3%">2σ hint</span><span style="left:50%">3σ heard</span><span style="left:100%;transform:translateX(-100%)">6σ</span></div>
+        </div>
+        <div class="tags" id="tags"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Why</h2>
+        <ol class="reasons" id="reasons"></ol>
+      </section>
+
+      <section class="panel">
+        <div class="charts">
+          <div class="chart wide">
+            <h3>The ringdown, sample by sample</h3>
+            <div class="legend">
+              <span><i class="swatch" style="background:var(--data)"></i>data = signal + noise</span>
+              <span><i class="swatch" style="background:var(--ink)"></i>true signal</span>
+              <span><i class="swatch" style="background:var(--c220)"></i>220 part</span>
+              <span><i class="swatch" style="background:var(--c221)"></i>221 part</span>
+              <span><i class="swatch" style="background:var(--ink-2);height:0;border-top:2px dashed var(--ink-2)"></i>best 220-only fit</span>
+            </div>
+            <div class="canvas-box tall"><canvas id="wave" role="img" aria-label="Waveform chart"></canvas></div>
+            <p class="caption">Grey band: data before the fit start, thrown away. Hover to read values.</p>
+          </div>
+          <div class="chart">
+            <h3>Overtone significance vs start time</h3>
+            <div class="legend">
+              <span><i class="swatch" style="background:var(--c221)"></i>free f and τ (this project's fits)</span>
+              <span><i class="swatch" style="background:var(--c221);height:0;border-top:2px dashed var(--c221)"></i>f, τ linked by GR</span>
+            </div>
+            <div class="canvas-box"><canvas id="scanz" role="img" aria-label="Significance against start time"></canvas></div>
+            <p class="caption">Dotted line: 3σ. Vertical line: your start time.</p>
+          </div>
+          <div class="chart">
+            <h3>Ignore the overtone: bias vs noise on τ₂₂₀</h3>
+            <div class="legend">
+              <span><i class="swatch" style="background:var(--c221)"></i>|bias| from a 220-only fit</span>
+              <span><i class="swatch" style="background:var(--c220)"></i>noise error at this SNR</span>
+            </div>
+            <div class="canvas-box"><canvas id="scanb" role="img" aria-label="Bias and noise against start time"></canvas></div>
+            <p class="caption">Where orange is above blue, the wrong model hurts more than the noise.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="grid2">
+        <section class="panel">
+          <h2>The numbers</h2>
+          <div class="table-wrap"><table id="numbers"></table></div>
+        </section>
+
+        <section class="panel">
+          <h2>Try it on noisy data</h2>
+          <p class="caption">Fits one mode and two modes to noisy copies of the signal, as in Experiment C. The overtone counts as detected when two modes improve the fit by Δχ² above <span class="mono" id="thr"></span>, the level that pure noise passes only 1% of the time (calibrated for the project default).</p>
+          <div class="exp-actions">
+            <button type="button" class="primary" id="run1">Fit this noise</button>
+            <button type="button" id="run50">Run 50 noisy universes</button>
+          </div>
+          <div class="meter" aria-hidden="true"><i id="meter"></i></div>
+          <div class="exp-out" id="exp-out"><p class="caption">Press a button to run the fits in your browser.</p></div>
+        </section>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script>
+"use strict";
+// ---------------------------------------------------------------- physics
+const FS = 4096, N = Math.floor(FS * 0.1);          // 409 samples, like the Python code
+const MSUN_S = 4.925491e-6;
+const COEFFS = {
+  "220": [1.5251, -1.1568, 0.1292, 0.7000, 1.4187, -0.4990],
+  "221": [1.3673, -1.0260, 0.1628, 0.1000, 0.5436, -0.4731],
+};
+const T = Float64Array.from({ length: N }, (_, i) => i / FS);
+const Z_HEARD = 3, Z_HINT = 2;
+// Delta-chi2 threshold for 1% false alarms, from Experiment C (results/detection.json).
+const DCHI2_THRESHOLD = 15.70;
+const BOUNDS1 = { lo: [-Infinity, -Infinity, 20, 1e-5], hi: [Infinity, Infinity, 2000, 0.1] };
+const BOUNDS2 = { lo: BOUNDS1.lo.concat(BOUNDS1.lo), hi: BOUNDS1.hi.concat(BOUNDS1.hi) };
+
+function qnm(mode, mass, spin) {
+  const [f1, f2, f3, q1, q2, q3] = COEFFS[mode];
+  const F = f1 + f2 * Math.pow(1 - spin, f3);
+  const Q = q1 + q2 * Math.pow(1 - spin, q3);
+  const f = F / (2 * Math.PI * mass * MSUN_S);
+  return [f, Q / (Math.PI * f)];
+}
+function ds(t, a, b, f, tau) {
+  const out = new Float64Array(t.length), w = 2 * Math.PI * f;
+  for (let i = 0; i < t.length; i++) out[i] = Math.exp(-t[i] / tau) * (a * Math.cos(w * t[i]) + b * Math.sin(w * t[i]));
+  return out;
+}
+const oneModel = (t, p) => ds(t, p[0], p[1], p[2], p[3]);
+function twoModel(t, p) {
+  const h = ds(t, p[0], p[1], p[2], p[3]), g = ds(t, p[4], p[5], p[6], p[7]);
+  for (let i = 0; i < h.length; i++) h[i] += g[i];
+  return h;
+}
+function kerrModel(t, q) {      // q = [a0, b0, a1, b1, mass, spin]
+  const [f0, t0] = qnm("220", q[4], q[5]), [f1, t1] = qnm("221", q[4], q[5]);
+  return twoModel(t, [q[0], q[1], f0, t0, q[2], q[3], f1, t1]);
+}
+function trueParams(mass, spin, ratio, phaseRad) {
+  const [f0, t0] = qnm("220", mass, spin), [f1, t1] = qnm("221", mass, spin);
+  return [1, 0, f0, t0, ratio * Math.cos(phaseRad), -ratio * Math.sin(phaseRad), f1, t1];
+}
+function shiftToStart(p, t0) {    // same waveform, clock restarted at t0
+  const out = p.slice();
+  for (const i of [0, 4]) {
+    const [a, b, f, tau] = p.slice(i, i + 4), env = Math.exp(-t0 / tau), ph = 2 * Math.PI * f * t0;
+    out[i] = env * (a * Math.cos(ph) + b * Math.sin(ph));
+    out[i + 1] = env * (b * Math.cos(ph) - a * Math.sin(ph));
+  }
+  return out;
+}
+const norm = (h) => { let s = 0; for (const x of h) s += x * x; return Math.sqrt(s); };
+function windowFrom(t0ms) {
+  let i0 = 0;
+  while (i0 < N - 8 && T[i0] < t0ms * 1e-3 - 1e-12) i0++;
+  return { i0, t0: T[i0], tt: Float64Array.from(T.subarray(i0), (x) => x - T[i0]) };
+}
+
+// ------------------------------------------------------------ linear algebra
+function jacobian(model, t, p) {
+  return p.map((pi, i) => {
+    const step = 1e-6 * Math.max(Math.abs(pi), 1e-3), up = p.slice(), dn = p.slice();
+    up[i] += step; dn[i] -= step;
+    const hu = model(t, up), hd = model(t, dn), row = new Float64Array(t.length);
+    for (let k = 0; k < t.length; k++) row[k] = (hu[k] - hd[k]) / (2 * step);
+    return row;
+  });
+}
+function gram(J) {
+  const n = J.length, A = Array.from({ length: n }, () => new Array(n).fill(0));
+  for (let i = 0; i < n; i++) for (let j = i; j < n; j++) {
+    let s = 0; const a = J[i], b = J[j];
+    for (let k = 0; k < a.length; k++) s += a[k] * b[k];
+    A[i][j] = A[j][i] = s;
+  }
+  return A;
+}
+function invert(A) {              // Gauss-Jordan with partial pivoting
+  const n = A.length, M = A.map((r) => r.slice()), I = A.map((_, i) => A.map((_, j) => (i === j ? 1 : 0)));
+  for (let c = 0; c < n; c++) {
+    let piv = c;
+    for (let r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[piv][c])) piv = r;
+    if (!(Math.abs(M[piv][c]) > 0)) return null;
+    [M[c], M[piv]] = [M[piv], M[c]]; [I[c], I[piv]] = [I[piv], I[c]];
+    const d = M[c][c];
+    for (let j = 0; j < n; j++) { M[c][j] /= d; I[c][j] /= d; }
+    for (let r = 0; r < n; r++) if (r !== c) {
+      const f = M[r][c];
+      if (f) for (let j = 0; j < n; j++) { M[r][j] -= f * M[c][j]; I[r][j] -= f * I[c][j]; }
+    }
+  }
+  return I;
+}
+const covariance = (model, t, p) => invert(gram(jacobian(model, t, p)));   // sigma = 1
+function ampSig(C, a, b, ia, ib) {
+  const A = Math.hypot(a, b);
+  return A / Math.sqrt((a * a * C[ia][ia] + 2 * a * b * C[ia][ib] + b * b * C[ib][ib]) / (A * A));
+}
+function zFree(t, p) { const C = covariance(twoModel, t, p); return C ? ampSig(C, p[4], p[5], 4, 5) : NaN; }
+function zKerr(t, p, mass, spin) {
+  const q = [p[0], p[1], p[4], p[5], mass, spin], C = covariance(kerrModel, t, q);
+  return C ? ampSig(C, q[2], q[3], 2, 3) : NaN;
+}
+
+// Levenberg-Marquardt least squares with simple box bounds.
+function lmFit(model, t, y, p0, bounds, maxIter = 300) {
+  const clip = (p) => p.map((v, i) => Math.min(bounds.hi[i], Math.max(bounds.lo[i], v)));
+  const chi2Of = (p) => { const m = model(t, p); let s = 0; for (let k = 0; k < y.length; k++) { const r = y[k] - m[k]; s += r * r; } return s; };
+  let p = clip(p0), chi = chi2Of(p), lam = 1e-3;
+  for (let it = 0; it < maxIter; it++) {
+    const J = jacobian(model, t, p), A = gram(J), m = model(t, p);
+    const g = J.map((row) => { let s = 0; for (let k = 0; k < y.length; k++) s += row[k] * (y[k] - m[k]); return s; });
+    let accepted = false;
+    for (let tries = 0; tries < 12; tries++) {
+      const Aug = A.map((r, i) => r.map((v, j) => (i === j ? v * (1 + lam) + 1e-300 : v)));
+      const Inv = invert(Aug);
+      if (!Inv) { lam *= 10; continue; }
+      const step = Inv.map((r) => r.reduce((s, v, j) => s + v * g[j], 0));
+      const pn = clip(p.map((v, i) => v + step[i])), cn = chi2Of(pn);
+      if (cn < chi) {
+        const gain = chi - cn;
+        p = pn; chi = cn; lam = Math.max(lam / 10, 1e-12); accepted = true;
+        if (gain <= 1e-13 * chi + 1e-300) return { p, chi2: chi };
+        break;
+      }
+      lam *= 10;
+    }
+    if (!accepted) break;
+  }
+  return { p, chi2: chi };
+}
+
+// ------------------------------------------------------------ the analysis
+function analyse(s, opts = {}) {
+  const P = trueParams(s.mass, s.spin, s.ratio, (s.phase * Math.PI) / 180);
+  const hFull = twoModel(T, P);
+  const { i0, t0, tt } = windowFrom(s.t0);
+  const p = shiftToStart(P, t0);
+  const ref = s.snrFrom === "start" ? norm(twoModel(tt, p)) : norm(hFull);
+  const k = s.snr / ref;                          // amplitude scale for the chosen SNR
+  const ps = p.map((v, i) => ([0, 1, 4, 5].includes(i) ? v * k : v));
+  const hs = twoModel(tt, ps);
+  const out = { P, ps, i0, t0, tt, scale: k };
+  out.snrPeak = norm(hFull) * k;
+  out.snrStart = norm(hs);
+  out.rho220 = norm(oneModel(tt, ps.slice(0, 4)));
+  out.rho221 = norm(oneModel(tt, ps.slice(4)));
+  out.Z = zFree(tt, ps);
+  out.ZK = zKerr(tt, ps, s.mass, s.spin);
+  const C = covariance(twoModel, tt, ps);
+  const err = C ? C.map((r, i) => Math.sqrt(r[i])) : new Array(8).fill(NaN);
+  out.err = err;
+  out.resolvedF = Math.abs(ps[2] - ps[6]) > Math.max(err[2], err[6]);
+  out.resolvedTau = Math.abs(ps[3] - ps[7]) > Math.max(err[3], err[7]);
+  const fit = lmFit(oneModel, tt, hs, ps.slice(0, 4), BOUNDS1).p;
+  out.fit1 = fit;
+  const resid = oneModel(tt, fit); for (let i = 0; i < resid.length; i++) resid[i] = hs[i] - resid[i];
+  out.rhoRes = norm(resid);
+  out.biasTau = (fit[3] - P[3]) / P[3];
+  out.biasF = (fit[2] - P[2]) / P[2];
+  const C1 = covariance(oneModel, tt, fit);
+  out.noiseTau = C1 ? Math.sqrt(C1[3][3]) / P[3] : NaN;
+  out.crossover = s.snr * out.noiseTau / Math.abs(out.biasTau);
+  out.snrHeard = s.snr * Z_HEARD / out.Z;
+  out.snrHeardK = s.snr * Z_HEARD / out.ZK;
+  out.indistinguishableBelow = s.snr / out.rhoRes;
+  if (opts.phaseScan) {
+    out.phaseZ = [];
+    for (let ph = 0; ph < 360; ph += 30) {
+      const q = shiftToStart(trueParams(s.mass, s.spin, s.ratio, (ph * Math.PI) / 180), t0);
+      const r = s.snrFrom === "start" ? norm(twoModel(tt, q)) : norm(twoModel(T, trueParams(s.mass, s.spin, s.ratio, (ph * Math.PI) / 180)));
+      const qs = q.map((v, i) => ([0, 1, 4, 5].includes(i) ? (v * s.snr) / r : v));
+      out.phaseZ.push([ph, zFree(tt, qs)]);
+    }
+  }
+  return out;
+}
+
+function scanStart(s) {
+  const pts = [];
+  for (let t0 = 0; t0 <= 8.0001; t0 += 0.25) {
+    const a = analyse({ ...s, t0 });
+    pts.push({ t0, Z: a.Z, ZK: a.ZK, bias: Math.abs(a.biasTau) * 100, noise: a.noiseTau * 100 });
+  }
+  return pts;
+}
+
+// ---------------------------------------------------------------- noise
+function rng(seed) {                       // mulberry32 + Box-Muller
+  let a = seed >>> 0;
+  const u = () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  return { u, normal() { let x = 0; while (x === 0) x = u(); return Math.sqrt(-2 * Math.log(x)) * Math.cos(2 * Math.PI * u()); } };
+}
+function noiseFor(seed, n) { const r = rng(seed); return Float64Array.from({ length: n }, () => r.normal()); }
+
+function noisyTrial(a, seed) {
+  const r = rng(seed * 7919 + 13);
+  const n = noiseFor(seed, a.tt.length), y = twoModel(a.tt, a.ps);
+  for (let i = 0; i < y.length; i++) y[i] += n[i];
+  const jit = (v) => v * (0.9 + 0.2 * r.u());
+  const s1 = a.ps.slice(0, 4); s1[2] = jit(s1[2]); s1[3] = jit(s1[3]);
+  const s2 = a.ps.slice(); for (const i of [2, 3, 6, 7]) s2[i] = jit(s2[i]);
+  const f1 = lmFit(oneModel, a.tt, y, s1, BOUNDS1), f2 = lmFit(twoModel, a.tt, y, s2, BOUNDS2, 400);
+  let p2 = f2.p;
+  if (p2[3] < p2[7]) p2 = p2.slice(4).concat(p2.slice(0, 4));   // longer-lived = 220
+  return { y, d: Math.max(f1.chi2 - f2.chi2, 0), fit1: f1.p, fit2: p2 };
+}
+
+// ---------------------------------------------------------------- state & UI
+const $ = (id) => document.getElementById(id);
+const PRESETS = {
+  project: { mass: 62.7, spin: 0.68, ratio: 1, phase: 0, snr: 50, snrFrom: "peak", t0: 0,
+    note: "The Ringdown Lab default: GW250114's source-frame mass, equal amplitudes, phase 0, fit from the peak." },
+  gw250114: { mass: 68.1, spin: 0.68, ratio: 4, phase: 180, snr: 26, snrFrom: "start", t0: 2.0,
+    note: "Detector-frame mass 68.1 M☉, spin 0.68, fit from 2.0 ms with SNR 26 left (arXiv:2509.08054). Ratio 4 from simulations; phase 180° is an assumption." },
+  gw150914: { mass: 68.5, spin: 0.69, ratio: 4, phase: 0, snr: 14, snrFrom: "peak", t0: 0,
+    note: "68.5 M☉, spin 0.69 (arXiv:1910.08708), post-peak SNR about 14 (arXiv:1905.00869). Ratio 4 at peak from simulations; phase 0 assumed." },
+  late: { mass: 62.7, spin: 0.68, ratio: 1, phase: 0, snr: 200, snrFrom: "peak", t0: 4,
+    note: "A loud event fitted from 4 ms. The overtone has mostly died away." },
+};
+let state = { ...PRESETS.project };
+let seed = 1;
+const snrToSlider = (v) => Math.round(1000 * Math.log(v / 5) / Math.log(100));
+const sliderToSnr = (x) => Math.round(5 * Math.pow(100, x / 1000) * 10) / 10;
+const fmt = (x, d = 2) => (Number.isFinite(x) ? x.toFixed(d) : "–");
+const fmtSnr = (x) => (!Number.isFinite(x) ? "never" : x > 1e5 ? "> 100,000" : x >= 100 ? Math.round(x).toLocaleString("en") : x.toFixed(1));
+const pct = (x, d = 1) => (Number.isFinite(x) ? (x * 100).toFixed(d) + "%" : "–");
+
+function syncInputs() {
+  $("mass").value = state.mass; $("spin").value = state.spin; $("ratio").value = state.ratio;
+  $("phase").value = state.phase; $("snr").value = snrToSlider(state.snr); $("t0").value = state.t0;
+  $("snr-peak").setAttribute("aria-pressed", state.snrFrom === "peak");
+  $("snr-start").setAttribute("aria-pressed", state.snrFrom === "start");
+}
+function readInputs() {
+  state.mass = +$("mass").value; state.spin = +$("spin").value; state.ratio = +$("ratio").value;
+  state.phase = +$("phase").value; state.snr = sliderToSnr(+$("snr").value); state.t0 = +$("t0").value;
+}
+function labelInputs(a) {
+  $("mass-out").textContent = state.mass.toFixed(1) + " M☉";
+  $("spin-out").textContent = state.spin.toFixed(2);
+  $("ratio-out").textContent = state.ratio.toFixed(2);
+  $("phase-out").textContent = state.phase + "°";
+  $("snr-out").textContent = state.snr.toFixed(state.snr < 20 ? 1 : 0);
+  const tM = state.mass * MSUN_S * 1e3;
+  $("t0-out").textContent = state.t0.toFixed(2) + " ms";
+  $("t0-hint").textContent = `= ${(state.t0 / tM).toFixed(1)} tM, where tM = GM/c³ = ${tM.toFixed(3)} ms for this mass.`;
+}
+
+const ICONS = {
+  yes: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="10" cy="10" r="8.5" stroke-width="1.6"/><path d="M6 10.5l2.6 2.6L14 7.5"/></svg>',
+  hint: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="10" cy="10" r="8.5" stroke-width="1.6"/><path d="M6 10h8"/></svg>',
+  no: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="10" cy="10" r="8.5" stroke-width="1.6"/><path d="M7 7l6 6M13 7l-6 6"/></svg>',
+};
+
+function verdictOf(a) {
+  if (a.rhoRes < 1) return { cls: "no", label: "No", head: "No. A fundamental-only model explains these data to within the noise." };
+  if (a.Z >= Z_HEARD) return { cls: "yes", label: "Yes, you can hear it", head: `Yes. The overtone stands ${fmt(a.Z, 1)}σ above zero.` };
+  if (a.Z >= Z_HINT) return { cls: "hint", label: "A faint hint", head: `Only a hint. The overtone sits ${fmt(a.Z, 1)}σ from zero, short of the 3σ bar.` };
+  return { cls: "no", label: "No", head: `No. At ${fmt(a.Z, 1)}σ the overtone is lost in the noise.` };
+}
+
+function reasonsFor(a) {
+  const s = state, P = a.P, out = [];
+  const [f0, tau0, f1, tau1] = [P[2], P[3], P[6], P[7]];
+  const dfHz = Math.abs(f0 - f1);
+  // 1. Loudness
+  out.push(`<b>Loudness.</b> From the fit start the whole signal has SNR ${fmt(a.snrStart, 1)}, and the overtone on its own carries ${fmt(a.rho221, 1)}. Significance grows in step with SNR: the overtone reaches 3σ at ${s.snrFrom === "peak" ? "a peak" : "a start"} SNR of about <b>${fmtSnr(a.snrHeard)}</b>${a.snrHeard <= s.snr ? ", which you are above" : `, ${fmt(a.snrHeard / s.snr, 1)}× louder than now`}.`);
+  // 2. Start time and decay
+  if (s.t0 > 0) {
+    const d0 = Math.exp(-s.t0 * 1e-3 / tau0), d1 = Math.exp(-s.t0 * 1e-3 / tau1);
+    out.push(`<b>Start time.</b> By ${s.t0.toFixed(2)} ms the overtone has faded to ${pct(d1, 0)} of its peak amplitude, the fundamental only to ${pct(d0, 0)}. The overtone dies ${fmt(tau0 / tau1, 1)}× faster (τ₂₂₁ = ${fmt(tau1 * 1e3, 2)} ms vs τ₂₂₀ = ${fmt(tau0 * 1e3, 2)} ms), so every millisecond you wait costs it much more.`);
+  } else {
+    out.push(`<b>Start time.</b> You fit from the peak, where the overtone is strongest. It fades ${fmt(tau0 / tau1, 1)}× faster than the fundamental (τ₂₂₁ = ${fmt(tau1 * 1e3, 2)} ms vs τ₂₂₀ = ${fmt(tau0 * 1e3, 2)} ms), so starting later would quickly hide it.`);
+  }
+  // 3. Same pitch
+  out.push(`<b>Almost the same note.</b> The overtone rings at ${fmt(f1, 1)} Hz, only ${fmt(dfHz, 1)} Hz (${pct(dfHz / f0, 1)}) below the fundamental at ${fmt(f0, 1)} Hz. You cannot hear it as a second pitch; it shows up as extra amplitude that fades fast. At this SNR the frequencies are ${a.resolvedF ? "" : "<b>not</b> "}resolved and the damping times are ${a.resolvedTau ? "" : "<b>not</b> "}resolved (Rayleigh test).`);
+  // 4. Ratio and phase
+  if (a.phaseZ) {
+    const best = a.phaseZ.reduce((m, x) => (x[1] > m[1] ? x : m)), worst = a.phaseZ.reduce((m, x) => (x[1] < m[1] ? x : m));
+    out.push(`<b>Amplitude and phase.</b> With ratio ${s.ratio.toFixed(2)} at the peak and phase ${s.phase}°, Z = ${fmt(a.Z, 1)}σ. Changing only the phase moves it between ${fmt(worst[1], 1)}σ (at ${worst[0]}°) and ${fmt(best[1], 1)}σ (at ${best[0]}°). How the two modes interfere changes how different the signal looks from a single mode.`);
+  }
+  // 5. Residual / distinguishability
+  out.push(`<b>What one mode can't explain.</b> The best 220-only fit leaves a residual with SNR ${fmt(a.rhoRes, 2)}. ${a.rhoRes < 1 ? "That is below 1, so the noise covers it completely: no method could tell the two models apart." : `That is above 1, so in principle the data know the overtone is there; whether a fit can prove it depends on Z.`}`);
+  // 6. Bias
+  const bias = Math.abs(a.biasTau), noise = a.noiseTau;
+  let biasLine = `<b>If you ignore it.</b> A 220-only fit gets τ₂₂₀ ${a.biasTau < 0 ? "too short" : "too long"} by ${pct(bias, 1)}, while noise alone would move it by about ${pct(noise, 1)}. `;
+  if (bias > noise && a.Z < Z_HEARD) biasLine += `<b>Blind spot:</b> the overtone already spoils the fundamental, yet you cannot detect it. Bias beats noise above SNR ${fmtSnr(a.crossover)}, but you only hear the overtone above ${fmtSnr(a.snrHeard)}.`;
+  else if (bias > noise) biasLine += "The bias is bigger than the noise, so the overtone must be in the model.";
+  else biasLine += `The bias hides under the noise until SNR ${fmtSnr(a.crossover)}, so for τ₂₂₀ the overtone can be ignored here.`;
+  out.push(biasLine);
+  // 7. GR-linked
+  out.push(`<b>Trusting General Relativity.</b> If both modes' f and τ are tied to one mass and spin, the significance is ${fmt(a.ZK, 1)}σ instead of ${fmt(a.Z, 1)}σ. ${a.ZK > 1.3 * a.Z ? "Fewer free numbers stop the two modes from blurring into each other." : "Here it barely helps: the limit is how much overtone signal is left, not the freedom of the fit."}`);
+  return out;
+}
+
+function renderNumbers(a) {
+  const P = a.P, rows = [
+    ["Mode 220 frequency / damping", `${fmt(P[2], 1)} Hz`, `${fmt(P[3] * 1e3, 3)} ms`],
+    ["Mode 221 frequency / damping", `${fmt(P[6], 1)} Hz`, `${fmt(P[7] * 1e3, 3)} ms`],
+    ["SNR from peak / from fit start", fmt(a.snrPeak, 1), fmt(a.snrStart, 1)],
+    ["Overtone SNR on its own", fmt(a.rho221, 2), ""],
+    ["Significance Z: free / GR-linked", fmt(a.Z, 2) + "σ", fmt(a.ZK, 2) + "σ"],
+    ["SNR needed for 3σ: free / GR-linked", fmtSnr(a.snrHeard), fmtSnr(a.snrHeardK)],
+    ["Residual SNR of a 220-only fit", fmt(a.rhoRes, 2), ""],
+    ["Error on f₂₂₁ / τ₂₂₁ (Fisher)", `±${fmt(a.err[6], 1)} Hz`, `±${fmt(a.err[7] * 1e3, 3)} ms`],
+    ["220-only fit: bias on f₂₂₀ / τ₂₂₀", pct(a.biasF, 2), pct(a.biasTau, 2)],
+    ["Noise error on τ₂₂₀ (one-mode fit)", pct(a.noiseTau, 2), ""],
+    ["SNR where bias beats noise", fmtSnr(a.crossover), ""],
+  ];
+  $("numbers").innerHTML = "<thead><tr><th>Quantity</th><th class='num'>Value</th><th class='num'></th></tr></thead><tbody>" +
+    rows.map((r) => `<tr><td>${r[0]}</td><td class="num">${r[1]}</td><td class="num">${r[2]}</td></tr>`).join("") + "</tbody>";
+}
+
+// ---------------------------------------------------------------- charts
+function css(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+function setupCanvas(cv) {
+  const r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  cv.width = Math.max(1, Math.round(r.width * dpr)); cv.height = Math.max(1, Math.round(r.height * dpr));
+  const ctx = cv.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { ctx, w: r.width, h: r.height };
+}
+function niceTicks(lo, hi, n = 5) {
+  const span = hi - lo, step0 = span / n, mag = Math.pow(10, Math.floor(Math.log10(step0)));
+  const step = [1, 2, 2.5, 5, 10].map((m) => m * mag).find((s) => span / s <= n) || mag * 10;
+  const out = []; for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) out.push(+v.toFixed(10));
+  return out;
+}
+function drawChart(cv, cfg) {
+  const { ctx, w, h } = setupCanvas(cv), m = { l: 52, r: 12, t: 10, b: 36 };
+  const X = (x) => m.l + ((x - cfg.x[0]) / (cfg.x[1] - cfg.x[0])) * (w - m.l - m.r);
+  const ly = (y) => (cfg.logY ? Math.log10(Math.max(y, cfg.y[0])) : y);
+  const y0 = ly(cfg.y[0]), y1 = ly(cfg.y[1]);
+  const Y = (y) => m.t + (1 - (ly(y) - y0) / (y1 - y0)) * (h - m.t - m.b);
+  ctx.clearRect(0, 0, w, h);
+  ctx.font = "11px " + css("--font-mono"); ctx.lineWidth = 1;
+  if (cfg.shade) { ctx.fillStyle = css("--shade"); ctx.fillRect(X(cfg.shade[0]), m.t, X(cfg.shade[1]) - X(cfg.shade[0]), h - m.t - m.b); }
+  // grid + ticks
+  const yt = cfg.logY ? (() => { const t = []; for (let e = Math.ceil(y0); e <= Math.floor(y1); e++) t.push(Math.pow(10, e)); return t; })() : niceTicks(cfg.y[0], cfg.y[1]);
+  ctx.strokeStyle = css("--grid"); ctx.fillStyle = css("--muted"); ctx.textAlign = "right"; ctx.textBaseline = "middle";
+  for (const v of yt) { const y = Y(v); ctx.beginPath(); ctx.moveTo(m.l, y); ctx.lineTo(w - m.r, y); ctx.stroke(); ctx.fillText(cfg.fmtY ? cfg.fmtY(v) : String(v), m.l - 6, y); }
+  ctx.textAlign = "center"; ctx.textBaseline = "top";
+  for (const v of niceTicks(cfg.x[0], cfg.x[1], 8)) ctx.fillText(String(v), X(v), h - m.b + 6);
+  ctx.fillStyle = css("--ink-2"); ctx.fillText(cfg.xlabel, m.l + (w - m.l - m.r) / 2, h - 14);
+  ctx.save(); ctx.translate(12, m.t + (h - m.t - m.b) / 2); ctx.rotate(-Math.PI / 2); ctx.textBaseline = "middle"; ctx.fillText(cfg.ylabel, 0, 0); ctx.restore();
+  ctx.save(); ctx.beginPath(); ctx.rect(m.l, m.t, w - m.l - m.r, h - m.t - m.b); ctx.clip();
+  for (const hl of cfg.hlines || []) { ctx.strokeStyle = css(hl.color); ctx.setLineDash(hl.dash || []); ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(m.l, Y(hl.y)); ctx.lineTo(w - m.r, Y(hl.y)); ctx.stroke(); }
+  for (const vl of cfg.vlines || []) { ctx.strokeStyle = css(vl.color); ctx.setLineDash(vl.dash || []); ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(X(vl.x), m.t); ctx.lineTo(X(vl.x), h - m.b); ctx.stroke(); }
+  for (const s of cfg.series) {
+    ctx.strokeStyle = css(s.color); ctx.lineWidth = s.width || 2; ctx.setLineDash(s.dash || []); ctx.lineJoin = "round"; ctx.beginPath();
+    let pen = false;
+    for (let i = 0; i < s.x.length; i++) {
+      const v = s.y[i]; if (!Number.isFinite(v) || (cfg.logY && v <= 0)) { pen = false; continue; }
+      const px = X(s.x[i]), py = Y(v); pen ? ctx.lineTo(px, py) : ctx.moveTo(px, py); pen = true;
+    }
+    ctx.stroke();
+  }
+  ctx.restore(); ctx.setLineDash([]);
+  cv._map = { X, Y, m, w, h, cfg };
+}
+function attachHover(cv, describe) {
+  const box = cv.parentElement; let tip = null;
+  const move = (ev) => {
+    const mp = cv._map; if (!mp) return;
+    const r = cv.getBoundingClientRect(), px = ev.clientX - r.left;
+    if (px < mp.m.l || px > mp.w - mp.m.r) return hide();
+    const x = mp.cfg.x[0] + ((px - mp.m.l) / (mp.w - mp.m.l - mp.m.r)) * (mp.cfg.x[1] - mp.cfg.x[0]);
+    const html = describe(x); if (!html) return hide();
+    if (!tip) { tip = document.createElement("div"); tip.className = "tip"; box.appendChild(tip); }
+    tip.innerHTML = html;
+    const tw = tip.offsetWidth; tip.style.left = Math.min(Math.max(px + 12, 0), mp.w - tw) + "px"; tip.style.top = "8px";
+    drawCross(cv, px);
+  };
+  const hide = () => { if (tip) { tip.remove(); tip = null; } redraw(cv); };
+  cv.addEventListener("pointermove", move); cv.addEventListener("pointerleave", hide);
+}
+const lastCfg = new Map();
+function chart(cv, cfg) { lastCfg.set(cv, cfg); drawChart(cv, cfg); }
+function redraw(cv) { const c = lastCfg.get(cv); if (c) drawChart(cv, c); }
+function drawCross(cv, px) {
+  redraw(cv); const mp = cv._map, ctx = cv.getContext("2d");
+  ctx.strokeStyle = css("--ink-2"); ctx.lineWidth = 1; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(px, mp.m.t); ctx.lineTo(px, mp.h - mp.m.b); ctx.stroke(); ctx.setLineDash([]);
+}
+
+let current = null, scan = null, noisy = null;
+function renderCharts() {
+  const a = current, s = state;
+  // waveform
+  const tEnd = Math.min(100, Math.max(15, s.t0 + 15));
+  const xs = Array.from(T, (x) => x * 1e3).filter((x) => x <= tEnd);
+  const n = xs.length, P = a.P, k = a.scale;
+  const amp = (p) => p.map((v, i) => ([0, 1, 4, 5].includes(i) ? v * k : v));
+  const full = twoModel(T, amp(P)), h220 = oneModel(T, amp(P).slice(0, 4)), h221 = oneModel(T, amp(P).slice(4));
+  const noise = noiseFor(seed, N), data = Float64Array.from(full, (v, i) => v + noise[i]);
+  const fitLine = new Array(N).fill(NaN); const fl = oneModel(a.tt, a.fit1); for (let i = 0; i < fl.length; i++) fitLine[a.i0 + i] = fl[i];
+  let ymax = 0; for (let i = 0; i < n; i++) ymax = Math.max(ymax, Math.abs(data[i]), Math.abs(full[i]));
+  ymax *= 1.08;
+  chart($("wave"), {
+    x: [0, tEnd], y: [-ymax, ymax], xlabel: "time after peak (ms)", ylabel: "strain (σ units)",
+    shade: s.t0 > 0 ? [0, a.t0 * 1e3] : null, fmtY: (v) => (Math.abs(v) >= 100 ? v.toFixed(0) : String(+v.toFixed(2))),
+    series: [
+      { x: xs, y: data.slice(0, n), color: "--data", width: 1.2 },
+      { x: xs, y: h220.slice(0, n), color: "--c220", width: 1.6 },
+      { x: xs, y: h221.slice(0, n), color: "--c221", width: 1.6 },
+      { x: xs, y: full.slice(0, n), color: "--ink", width: 2 },
+      { x: xs, y: fitLine.slice(0, n), color: "--ink-2", width: 1.6, dash: [5, 4] },
+    ],
+  });
+  $("wave")._hover = (x) => {
+    const i = Math.round((x / 1e3) * FS); if (i < 0 || i >= n) return "";
+    return `t = ${(T[i] * 1e3).toFixed(2)} ms<br>data ${data[i].toFixed(2)}<br>signal ${full[i].toFixed(2)}<br>220 ${h220[i].toFixed(2)} · 221 ${h221[i].toFixed(2)}` + (Number.isFinite(fitLine[i]) ? `<br>220-only fit ${fitLine[i].toFixed(2)}` : "");
+  };
+  renderScan();
+}
+function renderScan() {
+  if (!scan) return;
+  const s = state;
+  const t0s = scan.map((p) => p.t0);
+  const zmin = 0.01, zmax = Math.max(10, ...scan.map((p) => p.ZK).filter(Number.isFinite)) * 1.5;
+  chart($("scanz"), {
+    x: [0, 8], y: [zmin, zmax], logY: true, xlabel: "fit start after peak (ms)", ylabel: "significance Z (σ)",
+    fmtY: (v) => String(+v.toPrecision(2)),
+    hlines: [{ y: 3, color: "--ink", dash: [2, 3] }], vlines: [{ x: s.t0, color: "--ink-2" }],
+    series: [{ x: t0s, y: scan.map((p) => p.ZK), color: "--c221", width: 1.6, dash: [5, 4] }, { x: t0s, y: scan.map((p) => p.Z), color: "--c221", width: 2 }],
+  });
+  $("scanz")._hover = (x) => { const p = scan[Math.max(0, Math.min(scan.length - 1, Math.round(x / 0.25)))]; return `start ${p.t0.toFixed(2)} ms<br>Z free ${fmt(p.Z, 2)}σ<br>Z GR-linked ${fmt(p.ZK, 2)}σ`; };
+  const all = scan.flatMap((p) => [p.bias, p.noise]).filter((v) => Number.isFinite(v) && v > 0);
+  chart($("scanb"), {
+    x: [0, 8], y: [Math.max(1e-3, Math.min(...all) / 2), Math.max(...all) * 2], logY: true, xlabel: "fit start after peak (ms)", ylabel: "error on τ₂₂₀ (%)",
+    fmtY: (v) => String(+v.toPrecision(2)), vlines: [{ x: s.t0, color: "--ink-2" }],
+    series: [{ x: t0s, y: scan.map((p) => p.bias), color: "--c221" }, { x: t0s, y: scan.map((p) => p.noise), color: "--c220" }],
+  });
+  $("scanb")._hover = (x) => { const p = scan[Math.max(0, Math.min(scan.length - 1, Math.round(x / 0.25)))]; return `start ${p.t0.toFixed(2)} ms<br>|bias| ${fmt(p.bias, 2)}%<br>noise ${fmt(p.noise, 2)}%`; };
+}
+for (const id of ["wave", "scanz", "scanb"]) attachHover($(id), (x) => ($(id)._hover ? $(id)._hover(x) : ""));
+
+function render() {
+  readInputs();
+  current = analyse(state, { phaseScan: true });
+  labelInputs(current);
+  const v = verdictOf(current);
+  $("pill").className = "pill " + v.cls;
+  $("pill").innerHTML = ICONS[v.cls] + `<span>${v.label}</span>`;
+  $("headline").textContent = v.head;
+  $("gauge-fill").style.width = Math.min(100, (Math.max(current.Z, 0) / 6) * 100) + "%";
+  const tags = [];
+  if (Math.abs(current.biasTau) > current.noiseTau && current.Z < Z_HEARD) tags.push(["alert", "Blind spot: biased, but overtone not heard"]);
+  if (current.rhoRes < 1) tags.push(["", "Residual SNR < 1: models indistinguishable"]);
+  tags.push(["", current.resolvedF ? "Frequencies resolved" : "Frequencies not resolved"]);
+  tags.push(["", current.resolvedTau ? "Damping times resolved" : "Damping times not resolved"]);
+  $("tags").innerHTML = tags.map(([c, t]) => `<span class="tag ${c}">${t}</span>`).join("");
+  $("reasons").innerHTML = reasonsFor(current).map((r) => `<li><span>${r}</span></li>`).join("");
+  renderNumbers(current);
+  renderCharts();
+  noisy = null;
+  scheduleScan();
+}
+// The start-time scan is the slow part (~150 ms): run it once the sliders rest.
+let scanTimer = null;
+function scheduleScan() {
+  clearTimeout(scanTimer);
+  scanTimer = setTimeout(() => { scan = scanStart(state); renderScan(); }, scan ? 150 : 0);
+}
+let pending = false;
+function schedule() { if (pending) return; pending = true; requestAnimationFrame(() => { pending = false; render(); }); }
+
+for (const id of ["mass", "spin", "ratio", "phase", "snr", "t0"]) $(id).addEventListener("input", () => { $("preset-note").textContent = ""; schedule(); });
+$("snr-peak").addEventListener("click", () => { state.snrFrom = "peak"; syncInputs(); schedule(); });
+$("snr-start").addEventListener("click", () => { state.snrFrom = "start"; syncInputs(); schedule(); });
+$("reroll").addEventListener("click", () => { seed = (seed * 48271) % 2147483647; renderCharts(); });
+$("presets").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-preset]"); if (!b) return;
+  const p = PRESETS[b.dataset.preset]; state = { ...p }; $("preset-note").textContent = p.note; syncInputs(); schedule();
+});
+
+// ---------------------------------------------------------------- noisy experiments
+$("thr").textContent = DCHI2_THRESHOLD.toFixed(1);
+let running = false;
+$("run1").addEventListener("click", () => {
+  const a = current, r = noisyTrial(a, seed), det = r.d > DCHI2_THRESHOLD;
+  const f221 = r.fit2[6], tau221 = r.fit2[7], tau220 = r.fit1[3];
+  $("meter").style.width = "0%";
+  $("exp-out").innerHTML = `<p><b>${det ? "Detected" : "Not detected"}</b> in this noise: Δχ² = <span class="mono">${r.d.toFixed(1)}</span> ${det ? ">" : "≤"} ${DCHI2_THRESHOLD.toFixed(1)}.</p>
+    <p class="caption">Two-mode fit found f₂₂₁ = ${fmt(f221, 1)} Hz, τ₂₂₁ = ${fmt(tau221 * 1e3, 2)} ms (true ${fmt(a.P[6], 1)} Hz, ${fmt(a.P[7] * 1e3, 2)} ms). One-mode fit: τ₂₂₀ = ${fmt(tau220 * 1e3, 2)} ms (true ${fmt(a.P[3] * 1e3, 2)} ms). Same noise as the chart; press "New noise" for another draw.</p>`;
+});
+$("run50").addEventListener("click", () => {
+  if (running) return; running = true; $("run50").disabled = true; $("run1").disabled = true;
+  const a = current, total = 50, res = []; let i = 0;
+  const step = () => {
+    const until = performance.now() + 30;
+    while (i < total && performance.now() < until) { res.push(noisyTrial(a, 100000 + seed * 101 + i)); i++; }
+    $("meter").style.width = (100 * i / total) + "%";
+    if (i < total) return setTimeout(step, 0);
+    const det = res.filter((r) => r.d > DCHI2_THRESHOLD).length;
+    const taus = res.map((r) => r.fit1[3] / a.P[3] - 1).sort((x, y) => x - y);
+    const med = taus[Math.floor(total / 2)];
+    $("exp-out").innerHTML = `<p><b>Detected in ${det} of ${total}</b> noisy universes (${Math.round(100 * det / total)}%).</p>
+      <p class="caption">Fisher says Z = ${fmt(a.Z, 1)}σ for this setup. Around Z ≈ 3 the detection rate should be high, around Z ≈ 1 close to the 1% false-alarm level. Median τ₂₂₀ from the one-mode fits is ${pct(med, 1)} off the truth (noise-free bias: ${pct(a.biasTau, 1)}).</p>`;
+    running = false; $("run50").disabled = false; $("run1").disabled = false;
+  };
+  step();
+});
+
+// ---------------------------------------------------------------- start
+const themeRedraw = () => current && renderCharts();
+try { window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", themeRedraw); } catch (e) {}
+new MutationObserver(themeRedraw).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+let rt = null; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(themeRedraw, 120); });
+syncInputs();
+render();
+window.RL = { qnm, analyse, trueParams, shiftToStart, lmFit, zFree, zKerr, scanStart };   // for testing
+</script>
