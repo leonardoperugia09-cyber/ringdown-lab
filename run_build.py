@@ -23,7 +23,7 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import FuncFormatter
 
 from ringdown_lab.qnm import qnm, REMNANT_MASS, REMNANT_SPIN
-from ringdown_lab.signal import time_axis, two_mode
+from ringdown_lab.signal import damped_sinusoid, time_axis, two_mode
 from ringdown_lab.noise import white_noise, snr, scale_to_snr
 from ringdown_lab.fit import fit_one_mode, fit_two_mode, fisher_errors
 
@@ -156,11 +156,39 @@ def make_figures(a_rows, slope, b_rows, tau0):
     snrs = np.array([r["snr"] for r in a_rows])
     tau0_ms = tau0 * 1e3
 
+    # Colour rule for every figure: blue = 220 fundamental, orange = 221 overtone.
+
+    # 0) The two modes on their own, with their decay envelopes.
+    t = time_axis() * 1e3
+    f0, tau0_s = qnm("220", REMNANT_MASS, REMNANT_SPIN)
+    f1, tau1_s = qnm("221", REMNANT_MASS, REMNANT_SPIN)
+    show = t <= 15
+    fig, ax = plt.subplots(figsize=(7.2, 4.2))
+    for f, tau, color, name, lx, sign in [
+        (f0, tau0_s, BLUE, "220 fundamental", 1.6 * tau0_s * 1e3, 1),
+        (f1, tau1_s, ORANGE, "221 overtone", 1.2 * tau1_s * 1e3, -1),
+    ]:
+        env = np.exp(-t[show] / (tau * 1e3))
+        ax.plot(t[show], env, color=color, lw=1, ls="--")
+        ax.plot(t[show], -env, color=color, lw=1, ls="--")
+        ax.plot(t[show], damped_sinusoid(t[show] / 1e3, 1, 0, f, tau), color=color, lw=2)
+        ax.annotate(f"{name}: {f:.0f} Hz, τ = {tau * 1e3:.2f} ms",
+                    (lx, sign * np.exp(-lx / (tau * 1e3))), xytext=(10, 12 * sign),
+                    textcoords="offset points", color=INK, fontsize=10, fontweight="bold",
+                    va="center")
+    ax.set_xlim(0, 15)
+    ax.set_xlabel("Time after the peak (ms)")
+    ax.set_ylabel("Strain (amplitude 1 at the peak)")
+    ax.set_title("Same pitch, different lifetimes. Dashed: how fast each mode fades", loc="left")
+    fig.tight_layout()
+    fig.savefig(figdir / "00_two_modes.png", dpi=150)
+    plt.close(fig)
+
     # 1) Overtone frequency error vs SNR, with the Fisher prediction.
     fig, ax = plt.subplots(figsize=(6.4, 4.4))
-    ax.loglog(snrs, [r["f221_fisher_hz"] for r in a_rows], color=ORANGE,
+    ax.loglog(snrs, [r["f221_fisher_hz"] for r in a_rows], color=INK_2,
               ls="--", label="Fisher prediction")
-    ax.loglog(snrs, [r["f221_error_hz"] for r in a_rows], color=BLUE,
+    ax.loglog(snrs, [r["f221_error_hz"] for r in a_rows], color=ORANGE,
               marker="o", label=f"Simulated fits (slope above SNR 50: {slope:.2f})")
     ax.set_xlabel("Signal-to-noise ratio (SNR)")
     ax.set_ylabel("Error on overtone frequency $f_{221}$ (Hz)")
@@ -168,7 +196,7 @@ def make_figures(a_rows, slope, b_rows, tau0):
     ax.yaxis.set_major_formatter(PLAIN)
     ax.set_yticks([10, 20, 50, 100, 200, 500])
     ax.yaxis.set_minor_formatter(FuncFormatter(lambda v, _: ""))
-    ax.set_title("Overtone frequency error falls as 1/SNR at high SNR", loc="left")
+    ax.set_title("221 overtone: frequency error falls as 1/SNR at high SNR", loc="left")
     ax.legend()
     fig.tight_layout()
     fig.savefig(figdir / "01_overtone_error_vs_snr.png", dpi=150)
@@ -176,12 +204,12 @@ def make_figures(a_rows, slope, b_rows, tau0):
 
     # 2) Percentage of fits where the overtone is lost.
     fig, ax = plt.subplots(figsize=(6.4, 4.4))
-    ax.semilogx(snrs, [r["percent_lost"] for r in a_rows], color=BLUE, marker="o")
+    ax.semilogx(snrs, [r["percent_lost"] for r in a_rows], color=ORANGE, marker="o")
     ax.set_ylim(0, 100)
     ax.set_xlabel("Signal-to-noise ratio (SNR)")
     ax.set_ylabel("Overtone lost (% of fits)")
     ax.xaxis.set_major_formatter(PLAIN)
-    ax.set_title("Fits where $f_{221}$ is more than 20% off", loc="left")
+    ax.set_title("221 overtone lost: fitted $f_{221}$ more than 20% off", loc="left")
     fig.tight_layout()
     fig.savefig(figdir / "02_overtone_lost_vs_snr.png", dpi=150)
     plt.close(fig)
@@ -201,11 +229,11 @@ def make_figures(a_rows, slope, b_rows, tau0):
     ax.set_xlim(snr_line[0], snr_line[-1])
     ax.set_ylim(1e-3, 300)
     ax.set_xlabel("Signal-to-noise ratio (SNR)")
-    ax.set_ylabel(r"Error on $\tau_{220}$ (% of true value)")
+    ax.set_ylabel(r"Error on fundamental $\tau_{220}$ (% of true value)")
     ax.xaxis.set_major_formatter(PLAIN)
     ax.yaxis.set_major_formatter(PLAIN)
-    ax.set_title("Solid: noise error k/SNR.  Dotted: |bias|.  Dot: crossover",
-                 loc="left")
+    ax.set_title("220 fundamental, τ₂₂₀ — solid: noise k/SNR, dotted: |bias|, dot: crossover",
+                 loc="left", fontsize=11)
     ax.legend(ncol=2, fontsize=9, loc="lower left")
     fig.tight_layout()
     fig.savefig(figdir / "03_bias_vs_noise_crossover.png", dpi=150)
@@ -214,17 +242,18 @@ def make_figures(a_rows, slope, b_rows, tau0):
     # 4) Bias and noise error vs start time (noise error at a few SNRs).
     fig, ax = plt.subplots(figsize=(6.4, 4.4))
     starts = [r["start_ms"] for r in b_rows]
-    ax.semilogy(starts, [abs(r["bias_percent"]) for r in b_rows], color=ORANGE,
-                marker="o", label="|bias| (one-mode fit, no noise)")
-    for target, color, ls in [(20, AQUA, "-"), (120, BLUE, "-")]:
+    ax.semilogy(starts, [abs(r["bias_percent"]) for r in b_rows], color=BLUE,
+                marker="o", lw=2.5, label="|bias| from ignoring the overtone (no noise)")
+    for target, color in [(20, BLUE_RAMP[0]), (120, BLUE_RAMP[5])]:
         i = SNRS.index(target)
         ax.semilogy(starts, [100 * r["noise_error_ms"][i] / tau0_ms for r in b_rows],
-                    color=color, ls=ls, marker="s", label=f"noise error, SNR {target}")
+                    color=color, ls="--", marker="s", label=f"noise error, SNR {target}")
     ax.set_xlabel("Fit start time after the peak (ms)")
     ax.yaxis.set_major_formatter(PLAIN)
-    ax.set_ylabel(r"Error on $\tau_{220}$ (% of true value)")
-    ax.set_title("Starting later: bias shrinks fast, noise grows", loc="left")
-    ax.legend()
+    ax.set_ylabel(r"Error on fundamental $\tau_{220}$ (% of true value)")
+    ax.set_title("220 fundamental: later start, smaller bias, bigger noise", loc="left")
+    ax.set_ylim(0.08, 400)
+    ax.legend(loc="lower left", fontsize=9)
     fig.tight_layout()
     fig.savefig(figdir / "04_bias_and_noise_vs_start.png", dpi=150)
     plt.close(fig)

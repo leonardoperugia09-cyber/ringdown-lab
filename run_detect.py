@@ -54,6 +54,9 @@ B_START_MS = run_build.START_TIMES_MS
 FALSE_ALARM = 0.01
 Z_HEARD = 3.0
 SEED = 2027
+ORANGE_DARK = "#a03f15"
+ORANGE_SEQ = ListedColormap(["#fde3d6", "#f9c3a7", "#f4a078", "#eb6834",
+                             "#c9521f", "#a03f15", "#76300f"])
 BLUE_SEQ = ListedColormap(["#cde2fb", "#9ec5f4", "#6da7ec", "#3987e5",
                            "#256abf", "#184f95", "#0d366b"])
 
@@ -170,11 +173,11 @@ def make_figures(c_rows, threshold, grid, blind):
 
     # 5) Detection rate vs SNR, with the Fisher Z=3 SNR marked.
     fig, ax = plt.subplots(figsize=(6.6, 4.4))
-    for t0_ms, color in zip(C_START_MS, [BLUE, ORANGE]):
+    for t0_ms, color, ls in zip(C_START_MS, [ORANGE, ORANGE_DARK], ["-", "--"]):
         rows = [r for r in c_rows if r["start_ms"] == t0_ms]
         x = [r["snr"] for r in rows]
-        ax.semilogx(x, [r["percent_detected"] for r in rows], color=color, marker="o",
-                    label=f"fit starts {t0_ms} ms after peak")
+        ax.semilogx(x, [r["percent_detected"] for r in rows], color=color, ls=ls, marker="o",
+                    label=f"overtone, fit starts {t0_ms} ms after peak")
         heard = [b for b in blind if b["start_ms"] == t0_ms][0]["snr_heard"]
         if heard <= 300:
             ax.axvline(heard, color=color, ls="--", lw=1.2)
@@ -184,8 +187,9 @@ def make_figures(c_rows, threshold, grid, blind):
     ax.set_ylim(-2, 102)
     ax.xaxis.set_major_formatter(PLAIN)
     ax.set_xlabel("Signal-to-noise ratio (SNR, whole signal from peak)")
-    ax.set_ylabel("Overtone detected (% of noisy fits)")
-    ax.set_title(f"Δχ² test, threshold {threshold:.1f} (1% false alarms, dotted)", loc="left")
+    ax.set_ylabel("221 overtone detected (% of noisy fits)")
+    ax.set_title(f"221 overtone: Δχ² test, threshold {threshold:.1f} (1% false alarms, dotted)",
+                 loc="left", fontsize=11)
     ax.legend(loc="upper left")
     fig.tight_layout()
     fig.savefig(figdir / "05_detection_vs_snr.png", dpi=150)
@@ -196,9 +200,11 @@ def make_figures(c_rows, threshold, grid, blind):
     s = [b["start_ms"] for b in blind]
     cross = [b["crossover_snr"] for b in blind]
     heard = [b["snr_heard"] for b in blind]
-    ax.fill_between(s, cross, heard, color="#cde2fb", lw=0)
-    ax.semilogy(s, cross, color=ORANGE, marker="o", label="bias on τ₂₂₀ beats noise above this SNR")
-    ax.semilogy(s, heard, color=BLUE, marker="s", label="overtone heard (Z ≥ 3) above this SNR")
+    ax.fill_between(s, cross, heard, color="#ebe9e4", lw=0)
+    ax.semilogy(s, cross, color=BLUE, marker="o",
+                label="220 fundamental: τ₂₂₀ bias beats noise above this SNR")
+    ax.semilogy(s, heard, color=ORANGE, marker="s",
+                label="221 overtone: heard (Z ≥ 3) above this SNR")
     ax.text(5.1, 2600, "blind spot: biased,\nbut overtone not heard",
             color=INK_2, fontsize=9, va="center")
     ax.yaxis.set_major_formatter(PLAIN)
@@ -214,12 +220,12 @@ def make_figures(c_rows, threshold, grid, blind):
     cells = grid[0]
     shape = (len(D_RATIOS), len(D_PHASES_DEG))
     fig, axes = plt.subplots(1, 2, figsize=(10.5, 4.2), sharey=True)
-    for ax, key, title in [
-        (axes[0], "crossover_snr", "SNR where bias on τ₂₂₀ beats noise"),
-        (axes[1], "snr_heard", "SNR needed to hear the overtone (Z = 3)"),
+    for ax, key, title, cmap in [
+        (axes[0], "crossover_snr", "220 fundamental: SNR where τ₂₂₀ bias beats noise", BLUE_SEQ),
+        (axes[1], "snr_heard", "221 overtone: SNR needed to hear it (Z = 3)", ORANGE_SEQ),
     ]:
         z = np.array([c[key] for c in cells]).reshape(shape)
-        im = ax.imshow(z, origin="lower", aspect="auto", cmap=BLUE_SEQ,
+        im = ax.imshow(z, origin="lower", aspect="auto", cmap=cmap,
                        norm=LogNorm(vmin=max(z.min(), 0.5), vmax=z.max()))
         for i in range(shape[0]):
             for j in range(shape[1]):

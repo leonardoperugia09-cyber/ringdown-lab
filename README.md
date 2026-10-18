@@ -80,6 +80,10 @@ Then open `notebooks/01_build.ipynb`, and `app/index.html` in a browser.
 
 ## Results (N = 200, seeds 2026 and 2027)
 
+**Colour code in every figure and in the app: blue = 220 fundamental, orange = 221 overtone.**
+
+![The two modes](figures/00_two_modes.png)
+
 ### Experiment A: measuring the overtone with a two-mode fit
 
 | SNR | f221 error (Hz) | Fisher (Hz) | overtone lost |

@@ -236,31 +236,39 @@ td.num, th.num { text-align: right; }
             <h3>The ringdown, sample by sample</h3>
             <div class="legend">
               <span><i class="swatch" style="background:var(--data)"></i>data = signal + noise</span>
-              <span><i class="swatch" style="background:var(--ink)"></i>true signal</span>
-              <span><i class="swatch" style="background:var(--c220)"></i>220 part</span>
-              <span><i class="swatch" style="background:var(--c221)"></i>221 part</span>
-              <span><i class="swatch" style="background:var(--ink-2);height:0;border-top:2px dashed var(--ink-2)"></i>best 220-only fit</span>
+              <span><i class="swatch" style="background:var(--ink)"></i>true signal = fundamental + overtone</span>
+              <span><i class="swatch" style="background:var(--ink-2);height:0;border-top:2px dashed var(--ink-2)"></i>best fit with the fundamental only</span>
             </div>
-            <div class="canvas-box tall"><canvas id="wave" role="img" aria-label="Waveform chart"></canvas></div>
+            <div class="canvas-box tall"><canvas id="wave" role="img" aria-label="Waveform chart: data, true signal and fundamental-only fit"></canvas></div>
             <p class="caption">Grey band: data before the fit start, thrown away. Hover to read values.</p>
           </div>
-          <div class="chart">
-            <h3>Overtone significance vs start time</h3>
+          <div class="chart wide">
+            <h3>Inside the signal: <span style="color:var(--c220)">220 fundamental</span> and <span style="color:var(--c221)">221 overtone</span></h3>
             <div class="legend">
-              <span><i class="swatch" style="background:var(--c221)"></i>free f and τ (this project's fits)</span>
-              <span><i class="swatch" style="background:var(--c221);height:0;border-top:2px dashed var(--c221)"></i>f, τ linked by GR</span>
+              <span><i class="swatch" style="background:var(--c220)"></i>220 fundamental</span>
+              <span><i class="swatch" style="background:var(--c221)"></i>221 overtone</span>
+              <span><i class="swatch" style="background:var(--muted);height:0;border-top:2px dashed var(--muted)"></i>dashed: how fast each mode fades</span>
             </div>
-            <div class="canvas-box"><canvas id="scanz" role="img" aria-label="Significance against start time"></canvas></div>
+            <div class="canvas-box"><canvas id="modes" role="img" aria-label="The fundamental and the overtone drawn separately"></canvas></div>
+            <p class="caption">The two modes ring at almost the same pitch. The overtone is the one whose envelope collapses within a few milliseconds.</p>
+          </div>
+          <div class="chart">
+            <h3><span style="color:var(--c221)">221 overtone</span>: significance vs start time</h3>
+            <div class="legend">
+              <span><i class="swatch" style="background:var(--c221)"></i>overtone, free f and τ (this project's fits)</span>
+              <span><i class="swatch" style="background:var(--c221);height:0;border-top:2px dashed var(--c221)"></i>overtone, f and τ linked by GR</span>
+            </div>
+            <div class="canvas-box"><canvas id="scanz" role="img" aria-label="Overtone significance against start time"></canvas></div>
             <p class="caption">Dotted line: 3σ. Vertical line: your start time.</p>
           </div>
           <div class="chart">
-            <h3>Ignore the overtone: bias vs noise on τ₂₂₀</h3>
+            <h3><span style="color:var(--c220)">220 fundamental</span>: error on τ₂₂₀ if you ignore the overtone</h3>
             <div class="legend">
-              <span><i class="swatch" style="background:var(--c221)"></i>|bias| from a 220-only fit</span>
-              <span><i class="swatch" style="background:var(--c220)"></i>noise error at this SNR</span>
+              <span><i class="swatch" style="background:var(--c220)"></i>bias from a fundamental-only fit</span>
+              <span><i class="swatch" style="background:var(--c220);height:0;border-top:2px dashed var(--c220)"></i>noise error at this SNR</span>
             </div>
-            <div class="canvas-box"><canvas id="scanb" role="img" aria-label="Bias and noise against start time"></canvas></div>
-            <p class="caption">Where orange is above blue, the wrong model hurts more than the noise.</p>
+            <div class="canvas-box"><canvas id="scanb" role="img" aria-label="Fundamental damping time: bias and noise against start time"></canvas></div>
+            <p class="caption">Where the solid line is above the dashed one, ignoring the overtone hurts more than the noise.</p>
           </div>
         </div>
       </section>
@@ -643,6 +651,18 @@ function drawChart(cv, cfg) {
     }
     ctx.stroke();
   }
+  // Direct labels: a short dash in the series colour, then the text in ink.
+  ctx.setLineDash([]); ctx.font = "600 12px " + css("--font-body"); ctx.textBaseline = "middle"; ctx.textAlign = "left";
+  for (const lb of cfg.labels || []) {
+    if (!Number.isFinite(lb.y)) continue;
+    const tw = ctx.measureText(lb.text).width;
+    let px = X(lb.x) + 8, py = Y(lb.y) + (lb.dy || -12);
+    px = Math.min(Math.max(px, m.l + 4), w - m.r - tw - 26);
+    py = Math.min(Math.max(py, m.t + 9), h - m.b - 9);
+    ctx.fillStyle = css("--surface"); ctx.globalAlpha = 0.85; ctx.fillRect(px - 3, py - 9, tw + 26, 18); ctx.globalAlpha = 1;
+    ctx.strokeStyle = css(lb.color); ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px + 14, py); ctx.stroke();
+    ctx.fillStyle = css("--ink"); ctx.fillText(lb.text, px + 20, py);
+  }
   ctx.restore(); ctx.setLineDash([]);
   cv._map = { X, Y, m, w, h, cfg };
 }
@@ -688,15 +708,36 @@ function renderCharts() {
     shade: s.t0 > 0 ? [0, a.t0 * 1e3] : null, fmtY: (v) => (Math.abs(v) >= 100 ? v.toFixed(0) : String(+v.toFixed(2))),
     series: [
       { x: xs, y: data.slice(0, n), color: "--data", width: 1.2 },
-      { x: xs, y: h220.slice(0, n), color: "--c220", width: 1.6 },
-      { x: xs, y: h221.slice(0, n), color: "--c221", width: 1.6 },
       { x: xs, y: full.slice(0, n), color: "--ink", width: 2 },
       { x: xs, y: fitLine.slice(0, n), color: "--ink-2", width: 1.6, dash: [5, 4] },
     ],
   });
   $("wave")._hover = (x) => {
     const i = Math.round((x / 1e3) * FS); if (i < 0 || i >= n) return "";
-    return `t = ${(T[i] * 1e3).toFixed(2)} ms<br>data ${data[i].toFixed(2)}<br>signal ${full[i].toFixed(2)}<br>220 ${h220[i].toFixed(2)} · 221 ${h221[i].toFixed(2)}` + (Number.isFinite(fitLine[i]) ? `<br>220-only fit ${fitLine[i].toFixed(2)}` : "");
+    return `t = ${(T[i] * 1e3).toFixed(2)} ms<br>data ${data[i].toFixed(2)}<br>true signal ${full[i].toFixed(2)}` + (Number.isFinite(fitLine[i]) ? `<br>fundamental-only fit ${fitLine[i].toFixed(2)}` : "");
+  };
+  // the two modes separately, with their decay envelopes
+  const A0 = Math.hypot(P[0], P[1]) * k, A1 = Math.hypot(P[4], P[5]) * k, tau0 = P[3] * 1e3, tau1 = P[7] * 1e3;
+  const env0 = xs.map((x) => A0 * Math.exp(-x / tau0)), env1 = xs.map((x) => A1 * Math.exp(-x / tau1));
+  const mmax = 1.1 * Math.max(A0, A1);
+  const lx0 = Math.min(tEnd * 0.8, 1.6 * tau0), lx1 = Math.min(tEnd * 0.5, 1.2 * tau1);
+  chart($("modes"), {
+    x: [0, tEnd], y: [-mmax, mmax], xlabel: "time after peak (ms)", ylabel: "strain (σ units)",
+    shade: s.t0 > 0 ? [0, a.t0 * 1e3] : null, fmtY: (v) => (Math.abs(v) >= 100 ? v.toFixed(0) : String(+v.toFixed(2))),
+    series: [
+      { x: xs, y: env0, color: "--c220", width: 1, dash: [4, 4] }, { x: xs, y: env0.map((v) => -v), color: "--c220", width: 1, dash: [4, 4] },
+      { x: xs, y: env1, color: "--c221", width: 1, dash: [4, 4] }, { x: xs, y: env1.map((v) => -v), color: "--c221", width: 1, dash: [4, 4] },
+      { x: xs, y: h220.slice(0, n), color: "--c220", width: 2 },
+      { x: xs, y: h221.slice(0, n), color: "--c221", width: 2 },
+    ],
+    labels: [
+      { x: lx0, y: A0 * Math.exp(-lx0 / tau0), dy: -12, color: "--c220", text: `220 fundamental · ${fmt(P[2], 0)} Hz · τ ${fmt(tau0, 2)} ms` },
+      { x: lx1, y: -A1 * Math.exp(-lx1 / tau1), dy: 14, color: "--c221", text: `221 overtone · ${fmt(P[6], 0)} Hz · τ ${fmt(tau1, 2)} ms` },
+    ],
+  });
+  $("modes")._hover = (x) => {
+    const i = Math.round((x / 1e3) * FS); if (i < 0 || i >= n) return "";
+    return `t = ${(T[i] * 1e3).toFixed(2)} ms<br>220 fundamental ${h220[i].toFixed(2)}<br>221 overtone ${h221[i].toFixed(2)}`;
   };
   renderScan();
 }
@@ -706,21 +747,27 @@ function renderScan() {
   const t0s = scan.map((p) => p.t0);
   const zmin = 0.01, zmax = Math.max(10, ...scan.map((p) => p.ZK).filter(Number.isFinite)) * 1.5;
   chart($("scanz"), {
-    x: [0, 8], y: [zmin, zmax], logY: true, xlabel: "fit start after peak (ms)", ylabel: "significance Z (σ)",
+    x: [0, 8], y: [zmin, zmax], logY: true, xlabel: "fit start after peak (ms)", ylabel: "overtone significance Z (σ)",
     fmtY: (v) => String(+v.toPrecision(2)),
     hlines: [{ y: 3, color: "--ink", dash: [2, 3] }], vlines: [{ x: s.t0, color: "--ink-2" }],
     series: [{ x: t0s, y: scan.map((p) => p.ZK), color: "--c221", width: 1.6, dash: [5, 4] }, { x: t0s, y: scan.map((p) => p.Z), color: "--c221", width: 2 }],
+    labels: [{ x: 0.2, y: scan[1].Z, dy: 16, color: "--c221", text: "221 overtone" }],
   });
-  $("scanz")._hover = (x) => { const p = scan[Math.max(0, Math.min(scan.length - 1, Math.round(x / 0.25)))]; return `start ${p.t0.toFixed(2)} ms<br>Z free ${fmt(p.Z, 2)}σ<br>Z GR-linked ${fmt(p.ZK, 2)}σ`; };
+  $("scanz")._hover = (x) => { const p = scan[Math.max(0, Math.min(scan.length - 1, Math.round(x / 0.25)))]; return `start ${p.t0.toFixed(2)} ms<br>overtone Z, free ${fmt(p.Z, 2)}σ<br>overtone Z, GR-linked ${fmt(p.ZK, 2)}σ`; };
   const all = scan.flatMap((p) => [p.bias, p.noise]).filter((v) => Number.isFinite(v) && v > 0);
+  const last = scan[scan.length - 1];
   chart($("scanb"), {
-    x: [0, 8], y: [Math.max(1e-3, Math.min(...all) / 2), Math.max(...all) * 2], logY: true, xlabel: "fit start after peak (ms)", ylabel: "error on τ₂₂₀ (%)",
+    x: [0, 8], y: [Math.max(1e-3, Math.min(...all) / 2), Math.max(...all) * 2], logY: true, xlabel: "fit start after peak (ms)", ylabel: "error on fundamental τ₂₂₀ (%)",
     fmtY: (v) => String(+v.toPrecision(2)), vlines: [{ x: s.t0, color: "--ink-2" }],
-    series: [{ x: t0s, y: scan.map((p) => p.bias), color: "--c221" }, { x: t0s, y: scan.map((p) => p.noise), color: "--c220" }],
+    series: [{ x: t0s, y: scan.map((p) => p.bias), color: "--c220", width: 2 }, { x: t0s, y: scan.map((p) => p.noise), color: "--c220", width: 2, dash: [6, 4] }],
+    labels: [
+      { x: 0.2, y: scan[1].bias, dy: -12, color: "--c220", text: "bias" },
+      { x: 6.4, y: last.noise, dy: -12, color: "--c220", text: "noise" },
+    ],
   });
-  $("scanb")._hover = (x) => { const p = scan[Math.max(0, Math.min(scan.length - 1, Math.round(x / 0.25)))]; return `start ${p.t0.toFixed(2)} ms<br>|bias| ${fmt(p.bias, 2)}%<br>noise ${fmt(p.noise, 2)}%`; };
+  $("scanb")._hover = (x) => { const p = scan[Math.max(0, Math.min(scan.length - 1, Math.round(x / 0.25)))]; return `start ${p.t0.toFixed(2)} ms<br>τ₂₂₀ bias ${fmt(p.bias, 2)}%<br>τ₂₂₀ noise ${fmt(p.noise, 2)}%`; };
 }
-for (const id of ["wave", "scanz", "scanb"]) attachHover($(id), (x) => ($(id)._hover ? $(id)._hover(x) : ""));
+for (const id of ["wave", "modes", "scanz", "scanb"]) attachHover($(id), (x) => ($(id)._hover ? $(id)._hover(x) : ""));
 
 function render() {
   readInputs();
