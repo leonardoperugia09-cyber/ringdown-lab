@@ -1194,23 +1194,23 @@ function drawHist(vals) {
 
 // ---------------------------------------------------------------- guided tour
 const TOUR = [
-  { target: "sec-modes", title: "A black hole that rings",
-    body: `<p>When two black holes merge, the remnant vibrates and radiates gravitational waves as it settles down. This is the <b>ringdown</b>. It is a sum of damped oscillations called quasinormal modes, each with a frequency f and a damping time τ set by the mass and spin.</p><p class="eq">h(t) = A e^(−t/τ) cos(2πft + φ)</p>`,
+  { target: "sec-modes", title: "Black holes ring like bells",
+    body: `<p>If someone strikes a bell, it rings, and the note tells us something about the bell. Black holes ring too. When two of them merge, the new black hole wobbles before it settles down, and the wobbling sends gravitational waves through spacetime. This is the <b>ringdown</b>.</p><p>Each note is a quasinormal mode: a wave that oscillates with frequency f and shrinks by a factor of e every τ seconds.</p><p class="eq">h(t) = A · e^(−t/τ) · cos(2πft + φ)</p>`,
     demo: { mass: 62.7, spin: 0.68, ratio: 1, phase: 0, snr: 300, snrFrom: "peak", t0: 0 } },
-  { target: "sec-modes", title: "Fundamental and overtone",
-    body: `<p>The <b style="color:var(--c220)">220 fundamental</b> dominates and rings longest. The <b style="color:var(--c221)">221 overtone</b> has almost the same pitch but fades about 3× faster. The data contain their sum. Try changing the overtone's size.</p>`,
+  { target: "sec-modes", title: "Two notes, not one",
+    body: `<p>The main note, the <b style="color:var(--c220)">fundamental</b>, lasts the longest. The second note, the <b style="color:var(--c221)">overtone</b>, is where the bell analogy breaks: it is not higher-pitched. It rings at almost the same pitch but fades about three times faster.</p><p>One note gives the mass and spin. Two notes let us check that both agree, a test of Einstein's relativity. Try changing how loud the overtone starts.</p>`,
     demo: { mass: 62.7, spin: 0.68, ratio: 1, phase: 0, snr: 300, snrFrom: "peak", t0: 0 },
     buttons: [["Overtone ×1", { ratio: 1 }], ["Overtone ×4", { ratio: 4 }], ["Overtone ×0.25", { ratio: 0.25 }]] },
-  { target: "sec-wave", title: "Add noise",
-    body: `<p>Detectors record signal plus noise, never the clean wave. The grey line is simulated noisy data; the white line is the true signal hidden inside. <b>SNR</b> measures how loud the signal is compared with the noise: at SNR 15 it is barely visible, at SNR 150 it stands out.</p>`,
+  { target: "sec-wave", title: "Now add the noise",
+    body: `<p>A detector never hears the clean note. It hears the note plus everything else that shakes it. The grey line is that noisy data; the white line is the true signal hidden inside.</p><p>How clearly the signal stands out is its <b>signal-to-noise ratio</b> (SNR). At SNR 15 the ring is barely there. At 150 it is obvious. Here the noise is purely random; real detectors also fight ground vibrations, glitches and calibration errors.</p>`,
     demo: { mass: 62.7, spin: 0.68, ratio: 1, phase: 0, snr: 15, snrFrom: "peak", t0: 0 },
     buttons: [["SNR 15", { snr: 15 }], ["SNR 50", { snr: 50 }], ["SNR 150", { snr: 150 }]] },
-  { target: "sec-fits", title: "Fit one mode or two",
-    body: `<p>The app fits the noisy data twice by least squares: with the fundamental only (4 numbers) and with both modes (8 numbers). Two modes always fit a little better, so the improvement Δχ² must beat what noise alone produces. Starting the fit later throws away the overtone's strongest part.</p>`,
+  { target: "sec-fits", title: "Listening for the second note",
+    body: `<p>To find the overtone, the app fits the noisy data twice: once with one note (4 numbers) and once with two (8 numbers). Two notes always fit a little better, because extra numbers can chase the noise, so the improvement (Δχ²) has to beat what noise alone produces.</p><p>Then there is the start time. Start later and the overtone, which fades in about a millisecond, is already gone. The same choice was at the heart of the debate over GW150914's overtone.</p>`,
     demo: { mass: 62.7, spin: 0.68, ratio: 1, phase: 0, snr: 80, snrFrom: "peak", t0: 0 },
     buttons: [["Fit from 0 ms", { t0: 0 }], ["Fit from 2 ms", { t0: 2 }], ["Fit from 4 ms", { t0: 4 }]] },
-  { target: "sec-verdict", title: "Reading the result",
-    body: `<p><b>Z</b> forecasts how many standard deviations the overtone amplitude sits from zero for these settings; 3σ is a common bar, not proof. The bias metrics show what ignoring the overtone does to τ₂₂₀. Everything here is a simplified simulation (white noise, a known peak time, an exact two-mode signal), so it explores the problem; it is not evidence about real detections.</p>`,
+  { target: "sec-verdict", title: "What the result can and can't tell you",
+    body: `<p><b>Z</b> says how many standard deviations the overtone's size is expected to sit from zero with these settings. 3σ is a common bar, not proof; physicists usually want 5σ to claim a discovery. The bias numbers show what happens to the main note if you ignore the second one.</p><p>This is a simulation: random noise only, a perfectly known start time and a perfect two-note signal. It shows how noise and model choices limit what we can learn, not what a real black hole did.</p>`,
     demo: null, final: true },
 ];
 let tourIdx = -1, tourSaved = null, tourReturnFocus = null;
