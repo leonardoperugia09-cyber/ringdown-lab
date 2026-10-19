@@ -69,7 +69,7 @@ the overtone look a little easier to hear than in real data. Sources and numbers
 ```bash
 pip install -r requirements.txt
 pip install -e .              # lets Python find the ringdown_lab package from anywhere
-python -m pytest              # 28 checks: physics, signal, noise, fits, detection, app
+python -m pytest              # 30 checks: physics, signal, noise, fits, detection, app
 python run_build.py           # Experiments A and B, N = 200 (about 2 minutes)
 python run_detect.py          # Experiments C and D, N = 200 (about 6 minutes)
 python run_build.py --quick   # N = 30, for a fast try (also works for run_detect.py)
@@ -170,20 +170,23 @@ change the second number by a factor of 3 (figure 7).
 
 ## The app: Overtone Explorer
 
-[app/overtone_explorer.html](app/overtone_explorer.html) is a single web page (no
-installation) with the same physics rewritten in JavaScript. You set the mass, spin,
-overtone amplitude and phase, SNR and fit start time. It then shows:
+Live: **https://leonardoperugia09-cyber.github.io/overtone-explorer/**
 
-- a verdict ("Yes / A faint hint / No") with the significance Z on a 0–6σ gauge,
-- seven reasons in plain English, computed from the numbers: loudness, start time and decay,
-  the near-equal frequencies, amplitude and phase, what a one-mode fit cannot explain, the
-  bias if you ignore the overtone (including the blind spot), and the effect of trusting GR,
-- the waveform, a scan of Z over start times, and bias vs noise over start times,
-- a button that fits fresh noise in the browser ("Run 50 noisy universes").
+An interactive web app with the same physics in JavaScript. You set the black hole (mass,
+spin), the signal (overtone amplitude, phase, SNR) and the analysis (fit start, SNR
+convention, noise draw). It shows:
 
-`app/index.html` is the same page with a `<!doctype html>` line, for opening from disk. The
-JavaScript was checked against the Python code on four test cases: Z, residual SNR, bias
-and noise error agree to better than 0.01%. `tests/test_app.py` keeps the constants in sync.
+- the noisy simulated data with live one-mode and two-mode fits, and a Δχ² comparison;
+- a Fisher-forecast verdict with the significance Z, the τ220 bias and the reasons behind it;
+- the two modes separately, significance and bias against fit start time, and a 50-draw
+  noisy-data experiment;
+- a 5-step guided tour and a "How it works" section.
+
+`app/index.html` + `app/physics.js` are the website (the same files as the
+[overtone-explorer](https://github.com/leonardoperugia09-cyber/overtone-explorer) repo).
+`app/overtone_explorer.html` is a single-file build made by `python app/build_single.py`.
+The JavaScript was checked against the Python code: Z, residual SNR, bias and noise error
+agree to better than 0.01%. `tests/test_app.py` keeps the constants and the build in sync.
 
 ## Assumptions and limitations
 
