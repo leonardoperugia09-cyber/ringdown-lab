@@ -464,8 +464,8 @@ footer { color: var(--muted); font-size: 12px; display: flex; flex-wrap: wrap; j
     <div class="how">
       <article>
         <h3>1 · What is black-hole ringdown?</h3>
-        <p>When two black holes merge, they become one new, bigger black hole. At first it is lopsided, so it shakes itself back into shape. While it shakes, it sends out gravitational waves, ripples in spacetime, the way a bell sends out sound after it is struck. This last part of the signal is called the <b>ringdown</b>.</p>
-        <p>The ringdown is made of a few "notes". Each note has a <b>pitch</b> (its frequency, f, in hertz) and a <b>fade time</b> (its damping time, τ: how long it takes to shrink to about a third of its size). For a black hole, both depend on just two things: its mass and how fast it spins. A heavier black hole rings lower and longer. A faster-spinning one rings higher and longer.</p>
+        <p>When two black holes merge, they become one new, more massive black hole. Right after the merger it is distorted, and it sends out gravitational waves by oscillating, pretty much like sound spreads out from a bell after it is struck. This last part of the signal is called the <b>ringdown</b>.</p>
+        <p>The ringdown is made of a few "notes". Each note has a <b>pitch</b> (its frequency, f, in hertz) and a <b>fade time</b> (its damping time, τ: how long it takes to shrink to about a third of its size). For a black hole, both depend only on its mass and spin.</p>
         <details class="maths"><summary>Show the maths</summary>
           <p>Each note is a damped wave, A is its starting size and φ where it starts in its cycle:</p>
           <p class="eq">h(t) = A · e^(−t/τ) · cos(2πft + φ)</p>
@@ -475,9 +475,9 @@ footer { color: var(--muted); font-size: 12px; display: flex; flex-wrap: wrap; j
       </article>
       <article>
         <h3>2 · What are overtones?</h3>
-        <p>The loudest and longest note is the <b style="color:var(--c220)">fundamental</b> (called 220). The next one is the first <b style="color:var(--c221)">overtone</b> (called 221). Unlike a bell's overtone, it is not higher-pitched. It rings at almost the same pitch but fades about three times faster, so it only matters in the first few milliseconds after the peak of the signal.</p>
-        <p>In this app the signal is exactly these two notes added together. You choose how loud the overtone starts compared with the fundamental, and its <b>phase</b>: whether it starts in step with the fundamental (0°) or against it (180°).</p>
-        <p>If you start the fit later, you throw away the beginning of the data. Both notes keep their pitch and fade time, but by then the overtone has faded much more than the fundamental.</p>
+        <p>The loudest and longest note is the <b style="color:var(--c220)">fundamental</b> (called 220). The second one is the first <b style="color:var(--c221)">overtone</b> (called 221), which fades about three times faster and is therefore detectable only in the first few milliseconds.</p>
+        <p>In this app the signal is exactly these two notes added together. You can choose how loud the overtone starts relative to the fundamental, and whether it starts in step with the fundamental (0°) or against it (180°).</p>
+        <p>If you start the fit later, you throw away the beginning of the data, where the overtone is strongest. By then it has faded a lot, so it becomes much harder to detect.</p>
         <details class="maths"><summary>Show the maths</summary>
           <p>The signal from the peak is the sum of the two notes:</p>
           <p class="eq">h(t) = Σₙ Aₙ e^(−t/τₙ) cos(2πfₙt + φₙ),  n = 220, 221</p>
@@ -486,9 +486,9 @@ footer { color: var(--muted); font-size: 12px; display: flex; flex-wrap: wrap; j
       </article>
       <article>
         <h3>3 · How does noise affect detection?</h3>
-        <p>A detector never records the clean signal. It records the signal plus <b>noise</b>: random wiggles that are there all the time. Real detectors have many kinds of noise. This app uses the simplest: random "white" noise of the same typical size at every moment.</p>
-        <p>The <b>signal-to-noise ratio</b> (SNR) says how loud the signal is compared with that noise. At a low SNR the signal is buried; at a high SNR it stands out clearly.</p>
-        <p>The overtone is hard to hear for two reasons. It is short, so it adds only a little to the total loudness. And it sounds almost like the fundamental, so a model with only one note can partly imitate it by changing the fundamental's fade time. That trick gives the wrong fade time, an error called <b>bias</b>. So the overtone can spoil your measurement of the fundamental before you can even tell it is there.</p>
+        <p>A detector records the signal we need plus unwanted <b>noise</b>. Real detectors have many kinds of noise, while this app uses the simplest: random "white" noise of the same typical size at every moment.</p>
+        <p>The <b>signal-to-noise ratio</b> (SNR) says how loud the signal is compared to the noise. At a low SNR the signal is buried and impossible to detect. LIGO needs an SNR of about 8 to claim a detection.</p>
+        <p>The overtone is hard to hear for two reasons: it is very short, and it is very similar to the fundamental, with almost the same frequency. So a one-note model can partly imitate it by changing the fundamental's fade time. This trick gives an error called <b>bias</b>, a systematic error of the model itself.</p>
         <details class="maths"><summary>Show the maths</summary>
           <p>The noise is Gaussian with σ = 1 per sample (4096 samples per second for 0.1 s), and the signal is scaled so that SNR = √(Σh²)/σ. Ignoring the overtone makes τ₂₂₀ too short when it starts in step (0°) and too long near 180°.</p>
         </details>
@@ -497,9 +497,9 @@ footer { color: var(--muted); font-size: 12px; display: flex; flex-wrap: wrap; j
         <h3>4 · What does this experiment tell us?</h3>
         <p>The app gives four answers, and each one asks a slightly different question:</p>
         <ul>
-          <li><b>Significance Z</b> (verdict panel): <i>how sure could we be that the overtone is there?</i> It is the overtone's size divided by how uncertain that size is, so Z = 3 means the overtone is three times bigger than its uncertainty. It is a best-case prediction for your settings, not a measurement.</li>
-          <li><b>Δχ²</b> (fit table and noisy-data experiment): <i>does a two-note model fit this noisy data better than a one-note model, by more than luck?</i> Two notes always fit a bit better, because extra adjustable numbers can follow the noise too. So the overtone only counts as found when the improvement is above 15.70, a value pure noise beat only 1% of the time in tests with the default settings.</li>
-          <li><b>Residual SNR</b>: <i>how much of the signal can a one-note model not explain?</i> Below 1, the leftover is smaller than the noise, so no method could tell the two models apart.</li>
+          <li><b>Significance Z</b> (verdict panel): <i>how sure could we be that the overtone is there?</i> It is a signal-to-uncertainty ratio, so Z = 3 means the overtone is three times bigger than its uncertainty. It is a best-case prediction for your settings, not a measurement.</li>
+          <li><b>Δχ²</b> (fit table and noisy-data experiment): <i>does a two-note model (with both the fundamental and the overtone) fit this noisy data better than a one-note model (with only the fundamental), by more than luck?</i> Adding a second note generally improves the fit because the model has more freedom to match the data. So the overtone only counts as found when the improvement is above 15.70, a value that pure noise passed only 1% of the time in tests with the default settings.</li>
+          <li><b>Residual SNR</b>: <i>how much of the signal can a one-note model not explain?</i> Residual SNR is the signal-to-noise ratio of the unexplained part of the signal: how strong it is relative to the noise. Below 1, the leftover is smaller than the noise, so no method could tell the two models apart.</li>
           <li><b>Bias vs noise</b>: <i>is ignoring the overtone a problem?</i> The bias stays the same however loud the signal is, while the error caused by noise shrinks as the signal gets louder. Above some SNR, the wrong model hurts more than the noise does.</li>
         </ul>
         <p>Everything here is a simulation with simple random noise and a perfect two-note signal. It helps you explore the problem; it says nothing about what a real black hole did.</p>
